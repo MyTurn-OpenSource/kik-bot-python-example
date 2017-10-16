@@ -3,7 +3,7 @@
 """An example Kik bot implemented in Python.
 
 It's designed to greet the user, send a suggested response and replies to them with their profile picture.
-Remember to replace the BOT_USERNAME_HERE, BOT_API_KEY_HERE and WEBHOOK_HERE fields with your own.
+Remember to set KIKBOT_USERNAME, KIKBOT_API_KEY and KIKBOT_WEBHOOK in your Flask environment.
 
 See https://github.com/kikinteractive/kik-python for Kik's Python API documentation.
 
@@ -21,12 +21,15 @@ Unless required by applicable law or agreed to in writing, software distributed 
 language governing permissions and limitations under the License.
 
 """
-
+import sys, os
 from flask import Flask, request, Response
 from kik import KikApi, Configuration
 from kik.messages import messages_from_json, TextMessage, PictureMessage, \
     SuggestedResponseKeyboard, TextResponse, StartChattingMessage
-
+BOT_USERNAME = os.getenv('KIKBOT_USERNAME')
+BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
+WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
+PORT = int(os.getenv('KIKBOT_PORT', '8080'))
 
 class KikBot(Flask):
     """ Flask kik bot application class"""
@@ -161,10 +164,10 @@ class KikBot(Flask):
 
 if __name__ == "__main__":
     """ Main program """
-    kik = KikApi('BOT_USERNAME_HERE', 'BOT_API_KEY_HERE')
+    kik = KikApi(BOT_USERNAME, BOT_API_KEY)
     # For simplicity, we're going to set_configuration on startup. However, this really only needs to happen once
     # or if the configuration changes. In a production setting, you would only issue this call if you need to change
     # the configuration, and not every time the bot starts.
-    kik.set_configuration(Configuration(webhook='WEBHOOK_HERE'))
+    kik.set_configuration(Configuration(webhook=WEBHOOK))
     app = KikBot(kik, __name__)
-    app.run(port=8080, host='127.0.0.1', debug=True)
+    app.run(port=PORT, host='127.0.0.1', debug=True)

@@ -4,7 +4,7 @@ KIKBOT_MACHINE := $(KIKBOT_USERNAME)-kikbot
 # machine babebytes-kikbot username babebytes password abcdef-012345
 KIKBOT_API_KEY := $(shell awk '$$2 ~ /^$(KIKBOT_MACHINE)$$/ {print $$6}' \
 	$(HOME)/.netrc)
-KIKBOT_WEBHOOK ?= http://jc.unternet.net/test.cgi
+KIKBOT_WEBHOOK ?= http://kikbot.myturn.mobi/incoming
 KIKBOT_PORT ?= 8088
 VIRTUAL_ENV ?=  # this will be set only when `activate`d
 SITES_AVAILABLE := /etc/nginx/sites-available

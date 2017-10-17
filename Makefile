@@ -7,12 +7,23 @@ KIKBOT_API_KEY := $(shell awk '$$2 ~ /^$(KIKBOT_MACHINE)$$/ {print $$6}' \
 KIKBOT_WEBHOOK ?= http://jc.unternet.net/test.cgi
 KIKBOT_PORT ?= 8088
 VIRTUAL_ENV ?=  # this will be set only when `activate`d
+SITES_AVAILABLE := /etc/nginx/sites-available
+SITES_ENABLED := /etc/nginx/sites-enabled
 export
 # we test for virtualenv activation by looking for $(VIRTUAL_ENV)/bin/python,
 # because since there is no /bin/python it will fail if deactivated
 
-run: $(VIRTUAL_ENV)/bin/python
+run: $(VIRTUAL_ENV)/bin/python $(SITES_ENABLED)/kikbot.nginx
 	python bot.py
+
+$(SITES_ENABLED)/kikbot.nginx: $(SITES_AVAILABLE)/kikbot.nginx
+	sudo ln -sf $< $@
+	sudo /etc/init.d/nginx restart
+
+$(SITES_AVAILABLE)/kikbot.nginx: $(PWD)/kikbot.nginx
+	sudo ln -sf $< $@
+
+config: $(SITES_ENABLED)/kikbot.nginx
 
 lint: dev_dependencies
 	flake8 .
@@ -33,4 +44,6 @@ dependencies:
 
 test: dependencies lint
 	nosetests --with-coverage
+set:
+	env
 .PHONY: test lint dependencies dist dev_dependencies

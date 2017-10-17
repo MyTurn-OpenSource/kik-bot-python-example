@@ -80,14 +80,21 @@ $ cd kik-bot-python-example
 ```
 
 #### Setup your [Virtualenv](https://virtualenv.pypa.io/en/stable/) environment. 
+Shortcut: you can bypass the following 3 steps, through `Validate the installation`, by simply typing the following commands.
+
+```bash
+$ make shell
+$ make config
+```
+
 [Virtualenv](https://virtualenv.pypa.io/en/stable/) is a popular tool to create isolated Python environments. It is used by many python developers to create an environment that has its own installation directories, that does not share libraries with other environments.
 
 ```bash
-$ virtualenv env
-New python executable in ./kik-bot-python-example-internal/env/bin/python2.7
-Also creating executable in ./kik-bot-python-example-internal/env/bin/python
+$ virtualenv virtualenv
+New python executable in ./kik-bot-python-example-internal/virtualenv/bin/python2.7
+Also creating executable in ./kik-bot-python-example-internal/virtualenv/bin/python
 Installing setuptools, pip, wheel...done.
-$ source env/bin/activate
+$ source virtualenv/bin/activate
 ```
 
 #### Install dependencies 
@@ -95,7 +102,7 @@ $ source env/bin/activate
 Install the python dependencies: 
 
 ```bash
-(env) $ pip install -r requirements.dev.txt
+(virtualenv) $ pip install -r requirements.dev.txt
 ollecting flake8==2.5.4 (from -r requirements.dev.txt (line 1))
   Using cached flake8-2.5.4-py2.py3-none-any.whl
 Collecting mock==2.0.0 (from -r requirements.dev.txt (line 2))
@@ -140,7 +147,7 @@ Successfully installed Flask-0.11 Jinja2-2.9.4 MarkupSafe-0.23 Werkzeug-0.11.15 
 Validate the installation by running the unit tests. It should produce no errors. 
 
 ```
-(env) $ nosetests
+(virtualenv) $ nosetests
 ...............
 ----------------------------------------------------------------------
 Ran 15 tests in 0.176s
@@ -198,42 +205,31 @@ To get the bot running, you're going to need your bot's username, and the API ke
 
 Here you can set the display name and "profile picture" for your bot. You'll need to copy/paste your API key into the bot's source code.  
 
-Change:
-```python
-kik = KikApi('BOT_USERNAME_HERE', 'BOT_API_KEY_HERE')
-```
-so that your bot's username and your API key are passed to Kik API's constructor. For example, if we named our bot `ademobot`, and according the bot configuration panel our API key is 
-`5a888dcb-4c6e-1973-b15t-308e1854f0ba`, then we would change the above line to:
+Set your bot's API information in your $HOME/.netrc file, creating it if it's not there. It will look something like this, but with your own bot's name instead
+of `myapp` and with your own API key instead of abcdef-012345:
 
-```python
-kik = KikApi('ademobot', '5a888dcb-4c6e-1973-b15t-308e1854f0ba')
-```
+- machine myapp-kikbot login myapp password abcdef-012345
+
+Then change the file's permissions: `chmod 600 $HOME/.netrc`
 
 Next, we'll need to set the webhook to the URL of your bot's "incoming messages" route on your web server. This is where Kik will send all the messages that users send to your bot. In the example code, the route for incoming messages is `/incoming`
 
-Locate the following line in bot.py:
-
-```python
-kik.set_configuration(Configuration(webhook='WEBHOOK_HERE'))
-```
+Change the line in Makefile starting with `KIKBOT_WEBHOOK ?= ` to your own.
 
 Kik will send messages to this path upon receipt. So, if your web address is https://www.example.com then you'll set your webhook to https://www.example.com/incoming, as shown below. 
 
-```python
-kik.set_configuration(Configuration(webhook='https://www.example.com/incoming'))
-```
+KIKBOT_WEBHOOK ?= https://www.example.com/incoming
 
 If you're using [ngrok](https://ngrok.com) as shown above, you would set the webhook as follows:
 
-```python
-kik.set_configuration(Configuration(webhook='https://ABCDEFG123.ngrok.io'))
-```
+KIKBOT_WEBHOOK ?= https://ABCDEFG123.ngrok.io
 
 #### Launch Your Bot 
 
 Start the bot by running the file as shown below:
 
 ```bash
+(virtualenv) *make run*
 $ python ./bot.py
  * Running on http://127.0.0.1:8080/ (Press CTRL+C to quit)
  * Restarting with stat

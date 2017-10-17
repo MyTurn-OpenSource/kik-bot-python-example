@@ -23,12 +23,19 @@ $(SITES_ENABLED)/kikbot.nginx: $(SITES_AVAILABLE)/kikbot.nginx
 $(SITES_AVAILABLE)/kikbot.nginx: $(PWD)/kikbot.nginx
 	sudo ln -sf $< $@
 
-config: $(SITES_ENABLED)/kikbot.nginx
+config: $(SITES_ENABLED)/kikbot.nginx virtualenv/lib/python2.7/site-packages/kik
+
+virtualenv/lib/python2.7/site-packages/kik: $(VIRTUAL_ENV)/bin/python
+	$(MAKE) dev_dependencies
+	nosetests
 
 lint: dev_dependencies
 	flake8 .
 
-shell: env
+virtualenv:
+	virtualenv $@
+
+shell: virtualenv
 	echo '***DO NOT*** use `deactivate`, instead simply ^D' >&2
 	bash --rcfile $</bin/activate -i
 
@@ -36,14 +43,14 @@ shell: env
 	echo 'Must first `$(MAKE) shell`' >&2
 	false
 
-dev_dependencies:
+dev_dependencies: $(VIRTUAL_ENV)/bin/python
 	pip install --upgrade --requirement requirements.dev.txt
 
-dependencies:
+dependencies: $(VIRTUAL_ENV)/bin/python
 	pip install --upgrade --requirement requirements.txt
 
 test: dependencies lint
 	nosetests --with-coverage
-set:
-	env
+set env:
+	$@
 .PHONY: test lint dependencies dist dev_dependencies

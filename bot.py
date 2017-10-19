@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -OO
 # -*- coding: utf-8 -*-
 """An example Kik bot implemented in Python.
 
@@ -21,11 +21,12 @@ Unless required by applicable law or agreed to in writing, software distributed 
 language governing permissions and limitations under the License.
 
 """
-import sys, os
+import sys, os, logging
 from flask import Flask, request, Response
 from kik import KikApi, Configuration
 from kik.messages import messages_from_json, TextMessage, PictureMessage, \
     SuggestedResponseKeyboard, TextResponse, StartChattingMessage
+logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 BOT_USERNAME = os.getenv('KIKBOT_USERNAME')
 BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
 WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
@@ -142,6 +143,7 @@ class KikBot(Flask):
 
         messages_to_send = []
         profile_picture = user.profile_pic_url
+        logging.debug('profile_picture: %s', profile_picture)
 
         if profile_picture is not None:
             messages_to_send.append(

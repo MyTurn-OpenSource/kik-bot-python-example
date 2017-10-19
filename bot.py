@@ -75,6 +75,7 @@ class KikBot(Flask):
             # Check if the user has sent a text message.
             elif isinstance(message, TextMessage):
                 user = self.kik_api.get_user(message.from_user)
+                logging.debug('user: %s', user)
                 message_body = message.body.lower()
 
                 if message_body.split()[0] in ["hi", "hello"]:
@@ -140,9 +141,9 @@ class KikBot(Flask):
         :param message: Kik message received by the bot
         :return: Message
         """
-
+        default_pic = 'https://cdn.kik.com/user/pic/%s/big' % message.from_user
         messages_to_send = []
-        profile_picture = user.profile_pic_url
+        profile_picture = user.profile_pic_url or default_pic
         logging.debug('profile_picture: %s', profile_picture)
 
         if profile_picture is not None:

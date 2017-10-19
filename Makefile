@@ -35,9 +35,15 @@ lint: dev_dependencies
 virtualenv:
 	virtualenv $@
 
+devshell:
+	$(MAKE) KIKBOT_USERNAME=pyturn shell
+
 shell: virtualenv
 	echo '***DO NOT*** use `deactivate`, instead simply ^D' >&2
 	bash --rcfile $</bin/activate -i
+
+appshell: $(VIRTUAL_ENV)/bin/python
+	$< -i -c "from bot import *; import requests"
 
 /bin/python:
 	echo 'Must first `$(MAKE) shell`' >&2

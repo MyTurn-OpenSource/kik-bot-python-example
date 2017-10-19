@@ -137,8 +137,9 @@ class KikBot(Flask):
         :return: Message
         """
 
+        default_pic = 'https://cdn.kik.com/user/pic/%s/big' % message.from_user
         messages_to_send = []
-        profile_picture = user.profile_pic_url
+        profile_picture = user.profile_pic_url or default_pic
 
         if profile_picture is not None:
             messages_to_send.append(

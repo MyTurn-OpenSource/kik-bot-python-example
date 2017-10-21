@@ -203,7 +203,7 @@ To get the bot running, you're going to need your bot's username, and the API ke
 
 ![Bot Configuration Panel][bot_dashboard]
 
-Here you can set the display name and "profile picture" for your bot. You'll need to copy/paste your API key into the bot's source code.  
+Here you can set the display name and "profile picture" for your bot.
 
 Set your bot's API information in your $HOME/.netrc file, creating it if it's not there. It will look something like this, but with your own bot's name instead
 of `myapp` and with your own API key instead of abcdef-012345:
@@ -226,7 +226,7 @@ KIKBOT_WEBHOOK := https://ABCDEFG123.ngrok.io/incoming
 
 #### Launch Your Bot 
 
-Start the bot by running the file as shown below:
+For testing, start the bot by running the file as shown below:
 
 <pre>
 (virtualenv) $ <b>make run</b>
@@ -237,7 +237,18 @@ $ python ./bot.py
  * Debugger pin code: 300-736-125
 </pre>
 
-##Talking to the bot
+When you are sure it's running correctly, you can make it run as a permanent
+uwsgi app:
+
+<pre>
+$ <b>make install</b>
+</pre>
+
+These Makefile recipes are based on a Debian installation. Of course, you may
+need to install certain packages, such as `uwsgi`, `nginx`, and 
+`uwsgi-plugin-python`.
+
+## Talking to the bot
 
 With your bot up and running, you'll be able to chat with it in Kik. It should already appear in your message list. Select it to start chatting:
 

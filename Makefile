@@ -4,24 +4,38 @@ KIKBOT_MACHINE := $(KIKBOT_USERNAME)-kikbot
 # machine babebytes-kikbot username babebytes password abcdef-012345
 KIKBOT_API_KEY := $(shell awk '$$2 ~ /^$(KIKBOT_MACHINE)$$/ {print $$6}' \
 	$(HOME)/.netrc)
-KIKBOT_WEBHOOK ?= http://kikbot.myturn.mobi/incoming
+SERVER_DOMAIN ?= myturn.mobi
+KIKBOT_WEBHOOK ?= http://kikbot.$(SERVER_DOMAIN)/incoming
 KIKBOT_PORT ?= 8088
 VIRTUAL_ENV ?=  # this will be set only when `activate`d
 SITES_AVAILABLE := /etc/nginx/sites-available
 SITES_ENABLED := /etc/nginx/sites-enabled
+APPS_AVAILABLE := /etc/uwsgi/apps-available
+APPS_ENABLED := /etc/uwsgi/apps-enabled
 export
 # we test for virtualenv activation by looking for $(VIRTUAL_ENV)/bin/python,
 # because since there is no /bin/python it will fail if deactivated
 
-run: $(VIRTUAL_ENV)/bin/python $(SITES_ENABLED)/kikbot.nginx
-	python bot.py
+install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
+	sudo /etc/init.d/uwsgi restart
+	sudo /etc/init.d/nginx restart
+
+$(APPS_ENABLED)/kikbot.ini: $(APPS_AVAILABLE)/kikbot.ini
+	sudo ln -sf $< $@
+
+$(HOME)/.netrc:
+	@echo See documentation for creating $(HOME)/.netrc
 
 $(SITES_ENABLED)/kikbot.nginx: $(SITES_AVAILABLE)/kikbot.nginx
 	sudo ln -sf $< $@
-	sudo /etc/init.d/nginx restart
 
-$(SITES_AVAILABLE)/kikbot.nginx: $(PWD)/kikbot.nginx
-	sudo ln -sf $< $@
+$(SITES_AVAILABLE)/% $(APPS_AVAILABLE)/%: % Makefile
+	sudo rm -f $@  # in case it's a symlink from previous Makefile recipe
+	cat $< | sed -e 's%{KIKBOT_USERNAME}%$(KIKBOT_USERNAME)%' \
+	 -e 's%{KIKBOT_API_KEY}%$(KIKBOT_API_KEY)%' \
+	 -e 's%{KIKBOT_WEBHOOK}%$(KIKBOT_WEBHOOK)%' \
+	 -e 's%{PWD}%$(PWD)%' \
+	 | sudo tee $@
 
 config: $(SITES_ENABLED)/kikbot.nginx virtualenv/lib/python2.7/site-packages/kik
 

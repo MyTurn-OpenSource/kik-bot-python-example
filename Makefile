@@ -20,6 +20,19 @@ install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
 	sudo /etc/init.d/uwsgi restart
 	sudo /etc/init.d/nginx restart
 
+testrun: bot.py $(VIRTUAL_ENV)/bin/python
+	python $<
+
+uwsgi: bot.py
+	sudo --preserve-env uwsgi \
+	 --socket=/tmp/kikbot.sock \
+	 --chmod-socket=666 \
+	 --wsgi=bot:app \
+	 --virtualenv=virtualenv
+
+localtest:
+	$(MAKE) SERVER_DOMAIN=local uwsgi
+
 $(APPS_ENABLED)/kikbot.ini: $(APPS_AVAILABLE)/kikbot.ini
 	sudo ln -sf $< $@
 

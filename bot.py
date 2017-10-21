@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.DEBUG if __debug__ else logging.INFO)
 BOT_USERNAME = os.getenv('KIKBOT_USERNAME')
 BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
 WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
-PORT = int(os.getenv('KIKBOT_PORT', '8080'))
+PORT = int(os.getenv('KIKBOT_PORT', '0'))
 
 class KikBot(Flask):
     """ Flask kik bot application class"""
@@ -164,13 +164,26 @@ class KikBot(Flask):
 
         return messages_to_send
 
-
-if __name__ == "__main__":
+def init():
     """ Main program """
     kik = KikApi(BOT_USERNAME, BOT_API_KEY)
     # For simplicity, we're going to set_configuration on startup. However, this really only needs to happen once
     # or if the configuration changes. In a production setting, you would only issue this call if you need to change
     # the configuration, and not every time the bot starts.
+    logging.debug('setting webhook to %s', WEBHOOK)
     kik.set_configuration(Configuration(webhook=WEBHOOK))
     app = KikBot(kik, __name__)
-    app.run(port=PORT, host='127.0.0.1', debug=True)
+    if PORT:
+        app.run(port=PORT, host='127.0.0.1', debug=True)  # from command line
+    else:
+        return app
+
+if __name__ == "__main__":
+    if PORT:
+        init()
+    else:
+        logging.fatal('Cannot run from command line without KIKBOT_PORT set')
+else:
+    # running from uwsgi
+    PORT = None
+    app = init()

@@ -28,7 +28,7 @@ restart:
 	sudo /etc/init.d/uwsgi restart
 
 local_install:
-	$(MAKE) SERVER_DOMAIN=local install
+	$(MAKE) SERVER_DOMAIN=local KIKBOT_USERNAME=pyturn install
 
 run: bot.py $(VIRTUAL_ENV)/bin/python
 	python $<

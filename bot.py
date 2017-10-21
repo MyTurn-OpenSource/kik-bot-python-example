@@ -31,6 +31,7 @@ BOT_USERNAME = os.getenv('KIKBOT_USERNAME')
 BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
 WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
 PORT = int(os.getenv('KIKBOT_PORT', '0'))
+logging.debug('os.environ: %s, WEBHOOK: %s', os.environ, WEBHOOK)
 
 class KikBot(Flask):
     """ Flask kik bot application class"""

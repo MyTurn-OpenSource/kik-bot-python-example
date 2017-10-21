@@ -17,8 +17,8 @@ export
 # because since there is no /bin/python it will fail if deactivated
 
 install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
-	sudo /etc/init.d/uwsgi restart
 	sudo /etc/init.d/nginx restart
+	sudo /etc/init.d/uwsgi restart
 
 local_install:
 	$(MAKE) SERVER_DOMAIN=local install
@@ -30,7 +30,8 @@ uwsgi: bot.py
 	sudo --preserve-env uwsgi \
 	 --socket=/tmp/kikbot.sock \
 	 --chmod-socket=666 \
-	 --wsgi=bot:app \
+	 --wsgi-file=bot.py \
+	 --callable=app \
 	 --virtualenv=virtualenv
 
 localtest:

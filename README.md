@@ -65,7 +65,7 @@ Make sure you're running at least Python 2.7 or Python 3. We'll be using Python 
 Clone this repository:
 
 ```bash
-$ git clone https://github.com/kikinteractive/kik-bot-python-example.git
+$ git clone https://github.com/MyTurn-OpenSource/kik-bot-python-example.git
 Cloning into 'kik-bot-python-example'...
 remote: Counting objects: 88, done.
 remote: Total 88 (delta 0), reused 0 (delta 0), pack-reused 88
@@ -229,7 +229,7 @@ KIKBOT_WEBHOOK := https://ABCDEFG123.ngrok.io/incoming
 Start the bot by running the file as shown below:
 
 <pre>
-(virtualenv) <b>make run</b>
+(virtualenv) $ <b>make run</b>
 $ python ./bot.py
  * Running on http://127.0.0.1:8080/ (Press CTRL+C to quit)
  * Restarting with stat

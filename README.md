@@ -214,15 +214,15 @@ Then change the file's permissions: `chmod 600 $HOME/.netrc`
 
 Next, we'll need to set the webhook to the URL of your bot's "incoming messages" route on your web server. This is where Kik will send all the messages that users send to your bot. In the example code, the route for incoming messages is `/incoming`
 
-Change the line in Makefile starting with `KIKBOT_WEBHOOK ?= ` to your own.
+Change the line in Makefile starting with `KIKBOT_WEBHOOK ` to your own.
 
 Kik will send messages to this path upon receipt. So, if your web address is https://www.example.com then you'll set your webhook to https://www.example.com/incoming, as shown below. 
 
-KIKBOT_WEBHOOK ?= https://www.example.com/incoming
+KIKBOT_WEBHOOK := https://www.example.com/incoming
 
 If you're using [ngrok](https://ngrok.com) as shown above, you would set the webhook as follows:
 
-KIKBOT_WEBHOOK ?= https://ABCDEFG123.ngrok.io
+KIKBOT_WEBHOOK := https://ABCDEFG123.ngrok.io
 
 #### Launch Your Bot 
 

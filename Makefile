@@ -5,7 +5,7 @@ KIKBOT_MACHINE := $(KIKBOT_USERNAME)-kikbot
 KIKBOT_API_KEY := $(shell awk '$$2 ~ /^$(KIKBOT_MACHINE)$$/ {print $$6}' \
 	$(HOME)/.netrc)
 SERVER_DOMAIN ?= myturn.mobi
-KIKBOT_WEBHOOK ?= http://kikbot.$(SERVER_DOMAIN)/incoming
+KIKBOT_WEBHOOK := http://kikbot.$(SERVER_DOMAIN)/incoming
 KIKBOT_PORT ?= 8088
 VIRTUAL_ENV ?=  # this will be set only when `activate`d
 SITES_AVAILABLE := /etc/nginx/sites-available
@@ -20,6 +20,9 @@ install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
 	sudo /etc/init.d/uwsgi restart
 	sudo /etc/init.d/nginx restart
 
+local_install:
+	$(MAKE) SERVER_DOMAIN=local install
+
 testrun: bot.py $(VIRTUAL_ENV)/bin/python
 	python $<
 
@@ -33,6 +36,9 @@ uwsgi: bot.py
 localtest:
 	$(MAKE) SERVER_DOMAIN=local uwsgi
 
+localfetch:
+	wget --output-document=- --post-data=test http://kikbot.local/incoming
+
 $(APPS_ENABLED)/kikbot.ini: $(APPS_AVAILABLE)/kikbot.ini
 	sudo ln -sf $< $@
 
@@ -44,6 +50,7 @@ $(SITES_ENABLED)/kikbot.nginx: $(SITES_AVAILABLE)/kikbot.nginx
 
 $(SITES_AVAILABLE)/% $(APPS_AVAILABLE)/%: % Makefile
 	sudo rm -f $@  # in case it's a symlink from previous Makefile recipe
+	@echo Rebuilding $@ with SERVER_DOMAIN=$(SERVER_DOMAIN)
 	cat $< | sed -e 's%{KIKBOT_USERNAME}%$(KIKBOT_USERNAME)%' \
 	 -e 's%{KIKBOT_API_KEY}%$(KIKBOT_API_KEY)%' \
 	 -e 's%{KIKBOT_WEBHOOK}%$(KIKBOT_WEBHOOK)%' \

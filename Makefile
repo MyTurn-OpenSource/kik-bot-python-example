@@ -17,6 +17,7 @@ export
 # because since there is no /bin/python it will fail if deactivated
 
 install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
+	sudo rm -f /tmp/kikbot.sock
 	sudo /etc/init.d/nginx restart
 	sudo /etc/init.d/uwsgi restart
 

@@ -16,15 +16,21 @@ export
 # we test for virtualenv activation by looking for $(VIRTUAL_ENV)/bin/python,
 # because since there is no /bin/python it will fail if deactivated
 
+set env:
+	$@
+
 install: $(SITES_ENABLED)/kikbot.nginx $(APPS_ENABLED)/kikbot.ini
 	sudo rm -f /tmp/kikbot.sock
+	$(MAKE) restart
+
+restart:
 	sudo /etc/init.d/nginx restart
 	sudo /etc/init.d/uwsgi restart
 
 local_install:
 	$(MAKE) SERVER_DOMAIN=local install
 
-testrun: bot.py $(VIRTUAL_ENV)/bin/python
+run: bot.py $(VIRTUAL_ENV)/bin/python
 	python $<
 
 uwsgi: bot.py
@@ -93,6 +99,5 @@ dependencies: $(VIRTUAL_ENV)/bin/python
 
 test: dependencies lint
 	nosetests --with-coverage
-set env:
-	$@
+
 .PHONY: test lint dependencies dist dev_dependencies

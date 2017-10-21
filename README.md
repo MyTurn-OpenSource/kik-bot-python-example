@@ -222,20 +222,20 @@ KIKBOT_WEBHOOK := https://www.example.com/incoming
 
 If you're using [ngrok](https://ngrok.com) as shown above, you would set the webhook as follows:
 
-KIKBOT_WEBHOOK := https://ABCDEFG123.ngrok.io
+KIKBOT_WEBHOOK := https://ABCDEFG123.ngrok.io/incoming
 
 #### Launch Your Bot 
 
 Start the bot by running the file as shown below:
 
-```bash
-(virtualenv) *make run*
+<pre>
+(virtualenv) <b>make run</b>
 $ python ./bot.py
  * Running on http://127.0.0.1:8080/ (Press CTRL+C to quit)
  * Restarting with stat
  * Debugger is active!
  * Debugger pin code: 300-736-125
-```
+</pre>
 
 ##Talking to the bot
 

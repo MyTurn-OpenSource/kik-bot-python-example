@@ -9,7 +9,7 @@ See https://github.com/kikinteractive/kik-python for Kik's Python API documentat
 
 Apache 2.0 License
 
-(c) 2016 Kik Interactive Inc.
+(c) 2016 Kik Interactive Inc, 2017 modifications jc@unternet.net
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
 License. You may obtain a copy of the License at
@@ -21,7 +21,13 @@ Unless required by applicable law or agreed to in writing, software distributed 
 language governing permissions and limitations under the License.
 
 """
-import sys, os, logging
+from __future__ import print_statement
+import sys
+import os
+import random
+import re
+import logging
+from collections import defaultdict
 from flask import Flask, request, Response
 from kik import KikApi, Configuration
 from kik.messages import messages_from_json, TextMessage, PictureMessage, \
@@ -31,6 +37,85 @@ BOT_USERNAME = os.getenv('KIKBOT_USERNAME')
 BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
 WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
 PORT = int(os.getenv('KIKBOT_PORT', '0'))
+ANY = [[], []]  # indicates any type of user input
+OK = ['ok', 'okey', 'okay', 'listo', 'bueno', 'bien']
+GOOD = [
+    ['good', 'gut'] + OK,  # first word match
+    ['notbad', 'nichtschlecht'], # entire response if no first word match
+]
+BAD = [
+    ['bad', 'mal', 'malito', 'schlecht', 'ugh', 'crappy'],
+    ['notgood', 'nichtgut'],
+]
+YES = [
+    ['yes', 'yep', 'yup', 'yeah', 'sure', 'ja', 'si', 'sí', 'great'] + OK,
+    ['iguessso', 'comono', 'whynot'],
+]
+NO = [
+    ['no', 'non', 'nicht'],
+    ['probablynot', 'idontthinkso'],
+]
+GREETING = [
+    ['hi', 'hello', 'hola', 'hallo', 'gute', 'guten', 'buenos', 'buenas'],
+    ["wiegehts", 'howareyou', 'howareya', 'comoestas', 'comoesta', 'comesta'],
+]
+STATE = defaultdict(str)  # maintains state for each user
+# need a placeholder for profile picture display function, will replace later
+FUNCTIONS = {
+    'PROFILE_PIC_DISPLAY': None,
+}
+RESPONSE = {  # possible responses with new state for each state
+    # note that kik app does not allow an empty response
+    '': [
+            {
+                'input': GREETING,
+                'response': [['Hey {you.first_name}, how are you?']],
+                'state': 'health_query',
+                'suggested': ['Good', 'Bad'],
+            },
+        ],
+    'health_query': [
+            {
+                'input': GOOD,
+                'response': [["That's Great! :) Wanna see your profile pic?"]],
+                'state': 'picture_query',
+                'suggested': ["Sure! I'd love to!", 'No Thanks'],
+            },
+            {
+                'input': BAD,
+                'response': [['Oh No! :( Wanna see your profile pic?']],
+                'state': 'picture_query',
+                'suggested': ['Yep! I Sure Do!', 'No Thank You'],
+            },
+        ],
+    'picture_query': [
+            {
+                'input': YES,
+                'response': [['PROFILE_PIC_DISPLAY',
+                              "Here's your profile picture!"]],
+                'state': '',
+                'suggested': [],
+            },
+            {
+                'input': NO,
+                'response': [['Ok, {you.first_name}. '
+                             'Chat with me again if you change your mind.']],
+                'state': '',
+                'suggested': [],
+            },
+        ],
+    'default': [
+            {
+                'input': ANY,
+                'response': [["Sorry {you.first_name}, "
+                              "I didn't quite understand that. How are you?"],
+                             ["Sorry, I didn't quite understand that. "
+                              "How are you, {you.first_name}?"]]
+                'state': 'health_query',
+                'suggested': ['Good', 'Bad'],
+            }
+        ]
+}
 logging.debug('os.environ: %s, WEBHOOK: %s', os.environ, WEBHOOK)
 
 class KikBot(Flask):
@@ -47,86 +132,45 @@ class KikBot(Flask):
 
         self.route("/incoming", methods=["POST"])(self.incoming)
 
-    def incoming(self):
+    def incoming(self, testing=False):
         """Handle incoming messages to the bot. All requests are authenticated using the signature in
         the 'X-Kik-Signature' header, which is built using the bot's api key (set in main() below).
         :return: Response
         """
         # verify that this is a valid request
-        if not self.kik_api.verify_signature(
+        if not testing and not self.kik_api.verify_signature(
                 request.headers.get("X-Kik-Signature"), request.get_data()):
             return Response(status=403)
 
         messages = messages_from_json(request.json["messages"])
 
-        response_messages = []
+        response = []
 
         for message in messages:
-            user = self.kik_api.get_user(message.from_user)
-            # Check if its the user's first message. Start Chatting messages are sent only once.
+            user = message.from_user
+            logging.debug('user: %s', user)
+            userdata = self.kik_api.get_user(message.from_user)
+            logging.debug('userdata: %s', userdata)
+            state = STATE[user]
+            # Check if its the user's first message.
+            # Start Chatting messages are sent only once.
+            # Treat it as "hello" regardless of content.
             if isinstance(message, StartChattingMessage):
-
-                response_messages.append(TextMessage(
-                    to=message.from_user,
-                    chat_id=message.chat_id,
-                    body="Hey {}, how are you?".format(user.first_name),
-                    # keyboards are a great way to provide a menu of options for a user to respond with!
-                    keyboards=[SuggestedResponseKeyboard(responses=[TextResponse("Good"), TextResponse("Bad")])]))
-
-            # Check if the user has sent a text message.
-            elif isinstance(message, TextMessage):
-                user = self.kik_api.get_user(message.from_user)
-                logging.debug('user: %s', user)
-                message_body = message.body.lower()
-
-                if message_body.split()[0] in ["hi", "hello"]:
-                    response_messages.append(TextMessage(
-                        to=message.from_user,
+                message = TextMessage(
+                        to=user,
                         chat_id=message.chat_id,
-                        body="Hey {}, how are you?".format(user.first_name),
-                        keyboards=[SuggestedResponseKeyboard(responses=[TextResponse("Good"), TextResponse("Bad")])]))
-
-                elif message_body == "good":
-                    response_messages.append(TextMessage(
-                        to=message.from_user,
+                        body=GREETING[0][0])
+            elif not isinstance(message, TextMessage):
+                # we treat any non-text input as unrecognized
+                message = TextMessage(
+                        to=user,
                         chat_id=message.chat_id,
-                        body="That's Great! :) Wanna see your profile pic?",
-                        keyboards=[SuggestedResponseKeyboard(
-                            responses=[TextResponse("Sure! I'd love to!"), TextResponse("No Thanks")])]))
-
-                elif message_body == "bad":
-                    response_messages.append(TextMessage(
-                        to=message.from_user,
-                        chat_id=message.chat_id,
-                        body="Oh No! :( Wanna see your profile pic?",
-                        keyboards=[SuggestedResponseKeyboard(
-                            responses=[TextResponse("Yep! I Sure Do!"), TextResponse("No Thank You")])]))
-
-                elif message_body in ["yep! i sure do!", "sure! i'd love to!"]:
-
-                    # Send the user a response along with their profile picture (function definition is below)
-                    response_messages += self.profile_pic_check_messages(user, message)
-
-                elif message_body in ["no thanks", "no thank you"]:
-                    response_messages.append(TextMessage(
-                        to=message.from_user,
-                        chat_id=message.chat_id,
-                        body="Ok, {}. Chat with me again if you change your mind.".format(user.first_name)))
-                else:
-                    response_messages.append(TextMessage(
-                        to=message.from_user,
-                        chat_id=message.chat_id,
-                        body="Sorry {}, I didn't quite understand that. How are you?".format(user.first_name),
-                        keyboards=[SuggestedResponseKeyboard(responses=[TextResponse("Good"), TextResponse("Bad")])]))
-
-            # If its not a text message, give them another chance to use the suggested responses
-            else:
-
-                response_messages.append(TextMessage(
-                    to=message.from_user,
-                    chat_id=message.chat_id,
-                    body="Sorry, I didn't quite understand that. How are you, {}?".format(user.first_name),
-                    keyboards=[SuggestedResponseKeyboard(responses=[TextResponse("Good"), TextResponse("Bad")])]))
+                        body='')
+            trimmed = self.trim(message.body)
+            for check in RESPONSE[STATE[user]] + RESPONSE['default']:
+                if check['input'] == ANY or recognized(check['input'], trimmed):
+                    self.respond(response, check, message, userdata)
+                    break
 
             # We're sending a batch of messages. We can send up to 25 messages at a time (with a limit of
             # 5 messages per user).
@@ -134,6 +178,27 @@ class KikBot(Flask):
             self.kik_api.send_messages(response_messages)
 
         return Response(status=200)
+
+    def respond(self, response, data, message, userdata):
+        '''
+        Append packaged random response from data provided to response
+        
+        Side effect: sets new state for user
+        '''
+        templates = random.choice(data['response'])
+        for template in templates:
+            if template in FUNCTIONS:
+                response.append(FUNCTIONS[template](userdata, message))
+            else:
+                text = template.format(you=userdata)
+                keyboards = [SuggestedResponseKeyboard(
+                    responses=map(TextResponse, data['suggested']))]
+                response.append(TextMessage(
+                    to=message.from_user,
+                    chat_id=message.chat_id,
+                    body=text,
+                    keyboards=keyboards))
+        STATE[message.from_user] = data['state']
 
     @staticmethod
     def profile_pic_check_messages(user, message):
@@ -147,23 +212,33 @@ class KikBot(Flask):
         profile_picture = user.profile_pic_url or default_pic
         logging.debug('profile_picture: %s', profile_picture)
 
-        if profile_picture is not None:
-            messages_to_send.append(
-                # Another type of message is the PictureMessage - your bot can send a pic to the user!
-                PictureMessage(
-                    to=message.from_user,
-                    chat_id=message.chat_id,
-                    pic_url=profile_picture
-                ))
+        messages_to_send.append(
+            # Another type of message is the PictureMessage - your bot can send a pic to the user!
+            PictureMessage(
+                to=message.from_user,
+                chat_id=message.chat_id,
+                pic_url=profile_picture
+            ))
 
-            profile_picture_response = "Here's your profile picture!"
-        else:
-            profile_picture_response = "It does not look like you have a profile picture, you should set one"
+        profile_picture_response = "Here's your profile picture!"
 
         messages_to_send.append(
             TextMessage(to=message.from_user, chat_id=message.chat_id, body=profile_picture_response))
 
         return messages_to_send
+
+    def trim(self, text):
+        '''
+        get rid of all non-text characters
+
+        return tuple (first_word, entire_message_without_spaces)
+        
+        >>> trim(None, "It's a boy!")
+        ('its', itsaboy')
+        '''
+        shorter = re.compile(r'[\S\W]+').sub('', text).split()[0]
+        longer = re.compile(r'[\W]+').sub('', text)
+        return shorter, longer
 
 def init():
     """ Main program """

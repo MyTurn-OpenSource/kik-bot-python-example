@@ -38,7 +38,7 @@ BOT_API_KEY = os.getenv('KIKBOT_API_KEY')
 WEBHOOK = os.getenv('KIKBOT_WEBHOOK')
 PORT = int(os.getenv('KIKBOT_PORT', '0'))
 ANY = [[], []]  # indicates any type of user input
-OK = ['ok', 'okey', 'okay', 'listo', 'bueno', 'bien']
+OK = ['ok', 'okey', 'okay', 'listo', 'bueno', 'bien', 'fine']
 GOOD = [
     ['good', 'gut'] + OK,  # first word match
     ['notbad', 'nichtschlecht'], # entire response if no first word match
@@ -56,7 +56,8 @@ NO = [
     ['probablynot', 'idontthinkso'],
 ]
 GREETING = [
-    ['hi', 'hello', 'hola', 'hallo', 'gute', 'guten', 'buenos', 'buenas'],
+    ['hi', 'hello', 'hola', 'hallo', 'gute', 'guten', 'buenos', 'buenas',
+     'hey'],
     ["wiegehts", 'howareyou', 'howareya', 'comoestas', 'comoesta', 'comesta'],
 ]
 STATE = defaultdict(str)  # maintains state for each user
@@ -121,9 +122,6 @@ if COMMAND in ['doctest', 'pydoc']:
     DOCTESTDEBUG = logging.debug
 else:
     DOCTESTDEBUG = lambda *args, **kwargs: None
-# You can also use this `else` block to import things not needed during
-# doctest, especially slow-loading modules like `requests`,
-# or to do some other verbose or slow initialization.
 logging.debug('os.environ: %s, WEBHOOK: %s', os.environ, WEBHOOK)
 
 class KikBot(Flask):
@@ -140,24 +138,47 @@ class KikBot(Flask):
 
         self.route("/incoming", methods=["POST"])(self.incoming)
 
-    def incoming(self, testing=False):
+    def incoming(self):
         """Handle incoming messages to the bot. All requests are authenticated using the signature in
         the 'X-Kik-Signature' header, which is built using the bot's api key (set in main() below).
         :return: Response
         """
         # verify that this is a valid request
-        if not testing and not self.kik_api.verify_signature(
+        if not self.kik_api.verify_signature(
                 request.headers.get("X-Kik-Signature"), request.get_data()):
             return Response(status=403)
 
         messages = messages_from_json(request.json["messages"])
 
-        response = []
+        response = self.process(messages)
 
+        # We're sending a batch of messages. We can send up to 25 messages at a time (with a limit of
+        # 5 messages per user).
+
+        self.kik_api.send_messages(response)
+
+        return Response(status=200)
+
+    def process(self, messages, testing=False):
+        '''
+        Generate responses for incoming messages
+
+        >>> test = init()
+        >>> got = test.process([TextMessage(body='Hey there!')], testing=True)
+        >>> 'how are you' in got[0].body.lower()
+        True
+        '''
+        response = []
         for message in messages:
             user = message.from_user
             logging.debug('user: %s', user)
-            userdata = self.kik_api.get_user(message.from_user)
+            if testing:
+                userdata = type('', (), {
+                    'profile_pic_url': '//t.co/gnixl',
+                    'first_name': 'gnixl',
+                })
+            else:
+                userdata = self.kik_api.get_user(message.from_user)
             logging.debug('userdata: %s', userdata)
             state = STATE[user]
             # Check if its the user's first message.
@@ -165,33 +186,28 @@ class KikBot(Flask):
             # Treat it as "hello" regardless of content.
             if isinstance(message, StartChattingMessage):
                 message = TextMessage(
-                        to=user,
+                        to=BOT_USERNAME,
                         chat_id=message.chat_id,
                         body=GREETING[0][0])
             elif not isinstance(message, TextMessage):
                 # we treat any non-text input as unrecognized
                 message = TextMessage(
-                        to=user,
+                        to=BOT_USERNAME,
                         chat_id=message.chat_id,
                         body='')
             for check in RESPONSE[STATE[user]] + RESPONSE['default']:
                 if (check['input'] == ANY or
                         self.recognized(message.body, check['input'])):
-                    self.respond(response, check, message, userdata)
+                    state = self.respond(response, check, message, userdata)
+                    STATE[user] = state
                     break
-
-            # We're sending a batch of messages. We can send up to 25 messages at a time (with a limit of
-            # 5 messages per user).
-
-            self.kik_api.send_messages(response_messages)
-
-        return Response(status=200)
+        return response
 
     def respond(self, response, data, message, userdata):
         '''
         Append packaged random response from data provided to response
         
-        Side effect: sets new state for user
+        Returns new state for user
         '''
         templates = random.choice(data['response'])
         for template in templates:
@@ -206,18 +222,18 @@ class KikBot(Flask):
                     chat_id=message.chat_id,
                     body=text,
                     keyboards=keyboards))
-        STATE[message.from_user] = data['state']
+        return data['state']
 
     def recognized(self, user_input, expected):
         '''
         return True if first word or whole phrase matched
 
-        >>> app = init()
-        >>> app.recognized('I am', (['a', 'b', 'c'], ['i', 'iamnot']))
+        >>> test = init()
+        >>> test.recognized('I am', (['a', 'b', 'c'], ['i', 'iamnot']))
         False
-        >>> app.recognized('I am', (['a', 'b', 'c'], ['iam', 'iamnot']))
+        >>> test.recognized('I am', (['a', 'b', 'c'], ['iam', 'iamnot']))
         True
-        >>> app.recognized('I am', (['a', 'i', 'c'], ['iwish', 'iamnot']))
+        >>> test.recognized('I am', (['a', 'i', 'c'], ['iwish', 'iamnot']))
         True
         '''
         trimmed = self.trim(user_input)
@@ -225,14 +241,14 @@ class KikBot(Flask):
         return trimmed[0] in expected[0] or trimmed[1] in expected[1]
 
     @staticmethod
-    def profile_pic_check_messages(user, message):
+    def profile_pic_check_messages(userdata, message):
         """Function to check if user has a profile picture and returns appropriate messages.
         :param user: Kik User Object (used to acquire the URL the profile picture)
         :param message: Kik message received by the bot
         :return: PictureMessage
         """
         default_pic = 'https://cdn.kik.com/user/pic/%s/big' % message.from_user
-        profile_picture = user.profile_pic_url or default_pic
+        profile_picture = userdata.profile_pic_url or default_pic
         logging.debug('profile_picture: %s', profile_picture)
 
         return PictureMessage(
@@ -249,10 +265,10 @@ class KikBot(Flask):
 
         return tuple (first_word, entire_message_without_spaces)
         
-        >>> app = init()
-        >>> app.trim("It's a boy!")
+        >>> test = init()
+        >>> test.trim("It's a boy!")
         ('its', 'itsaboy')
-        >>> app.trim('')
+        >>> test.trim('')
         ('', '')
         '''
         lowercased = text.lower()

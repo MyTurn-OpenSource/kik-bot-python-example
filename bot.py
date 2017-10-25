@@ -182,13 +182,13 @@ class KikBot(Flask):
         for message in messages:
             username = message.from_user
             logging.debug('username: %s', username)
-            if testing:
+            if not testing:
+                user = self.kik_api.get_user(message.from_user)
+            else:
                 user = type('TestUser', (), {
                     'profile_pic_url': '//t.co/tester',
                     'first_name': 'tester',
                 })
-            else:
-                user = self.kik_api.get_user(message.from_user)
             logging.debug('user: %s', getattr(user, 'to_json', user))
             state = STATE[username]
             # Check if its the user's first message.
@@ -221,6 +221,7 @@ class KikBot(Flask):
         '''
         templates = random.choice(data['response'])
         for template in templates:
+            logging.debug('template: %s', template)
             if template in FUNCTIONS:
                 response.append(getattr(self, FUNCTIONS[template])(
                     user, message))
@@ -233,6 +234,7 @@ class KikBot(Flask):
                     chat_id=message.chat_id,
                     body=text,
                     keyboards=keyboards))
+        logging.debug('response: %s', response)
         return data['state']
 
     def recognized(self, user_input, expected):

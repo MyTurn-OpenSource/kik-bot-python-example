@@ -154,7 +154,7 @@ class KikBot(Flask):
 
         # We're sending a batch of messages. We can send up to 25 messages at a time (with a limit of
         # 5 messages per user).
-
+        logging.debug('response to incoming: %s', response)
         self.kik_api.send_messages(response)
 
         return Response(status=200)

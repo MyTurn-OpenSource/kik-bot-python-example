@@ -212,7 +212,8 @@ class KikBot(Flask):
         templates = random.choice(data['response'])
         for template in templates:
             if template in FUNCTIONS:
-                response.append(FUNCTIONS[template](userdata, message))
+                response.append(getattr(self, FUNCTIONS[template])(
+                    userdata, message))
             else:
                 text = template.format(you=userdata)
                 keyboards = [SuggestedResponseKeyboard(
@@ -240,8 +241,7 @@ class KikBot(Flask):
         DOCTESTDEBUG('checking if %s in %s', trimmed, expected)
         return trimmed[0] in expected[0] or trimmed[1] in expected[1]
 
-    @staticmethod
-    def profile_pic_check_messages(userdata, message):
+    def profile_pic_check_messages(self, userdata, message):
         """Function to check if user has a profile picture and returns appropriate messages.
         :param user: Kik User Object (used to acquire the URL the profile picture)
         :param message: Kik message received by the bot
@@ -257,7 +257,7 @@ class KikBot(Flask):
             pic_url=profile_picture
         )
 
-    FUNCTIONS['PROFILE_PIC_DISPLAY'] = profile_pic_check_messages
+    FUNCTIONS['PROFILE_PIC_DISPLAY'] = 'profile_pic_check_messages'
 
     def trim(self, text):
         '''

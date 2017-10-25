@@ -227,8 +227,7 @@ class KikBot(Flask):
                     user, message))
             else:
                 text = template.format(you=user)
-                keyboards = [SuggestedResponseKeyboard(
-                    responses=map(TextResponse, data['suggested']))]
+                keyboards = self.suggested_keyboards(data['suggested'])
                 response.append(TextMessage(
                     to=message.from_user,
                     chat_id=message.chat_id,
@@ -236,6 +235,18 @@ class KikBot(Flask):
                     keyboards=keyboards))
         logging.debug('response: %s', response)
         return data['state']
+
+    def suggested_keyboards(self, suggested):
+        '''
+        Package suggested replies as SuggestedResponseKeyboard object
+        '''
+        if not suggested:
+            keyboards = None
+        else:
+            text_responses = [TextResponse(s) for s in suggested]
+            keyboards = SuggestedResponseKeyboard(responses=text_responses)
+        logging.debug('keyboards: %s', keyboards)
+        return keyboards
 
     def recognized(self, user_input, expected):
         '''

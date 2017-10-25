@@ -160,7 +160,7 @@ class KikBot(Flask):
         return Response(status=200)
 
     def process(self, messages, testing=False):
-        '''
+        u'''
         Generate responses for incoming messages
 
         >>> test = init()
@@ -172,7 +172,7 @@ class KikBot(Flask):
         >>> got[0].body
         "That's Great! :) Wanna see your profile pic?"
         >>> STATE['tester'] = 'picture_query'
-        >>> got = test.process([TextMessage(body='Okay')], testing=True)
+        >>> got = test.process([TextMessage(body=u'Sí')], testing=True)
         >>> isinstance(got[0], TextMessage)
         True
         >>> isinstance(got[1], PictureMessage)
@@ -180,14 +180,14 @@ class KikBot(Flask):
         '''
         response = []
         for message in messages:
+            logging.debug('message: %s', message.to_json())
             username = message.from_user
-            logging.debug('username: %s', username)
             if not testing:
                 user = self.kik_api.get_user(message.from_user)
             else:
                 user = type('TestUser', (), {
                     'profile_pic_url': '//t.co/tester',
-                    'first_name': 'tester',
+                    'first_name': 'Tester',
                 })
             logging.debug('user: %s', getattr(user, 'to_json', user))
             state = STATE[username]
@@ -261,7 +261,7 @@ class KikBot(Flask):
         True
         '''
         trimmed = self.trim(user_input)
-        DOCTESTDEBUG('checking if %s in %s', trimmed, expected)
+        logging.debug('checking if %s in %s', trimmed, expected)
         return trimmed[0] in expected[0] or trimmed[1] in expected[1]
 
     def profile_picture_message(self, user, message):
@@ -283,7 +283,7 @@ class KikBot(Flask):
     FUNCTIONS['PROFILE_PIC_DISPLAY'] = 'profile_picture_message'
 
     def trim(self, text):
-        '''
+        ur'''
         get rid of all non-text characters
 
         return tuple (first_word, entire_message_without_spaces)
@@ -293,12 +293,14 @@ class KikBot(Flask):
         ('its', 'itsaboy')
         >>> test.trim('')
         ('', '')
+        >>> test.trim(u'Sí')
+        (u's\xed', u's\xed')
         '''
-        lowercased = text.lower()
-        shorter = (re.compile(r'[^\s\w]+').sub('', lowercased).split()
-                   or [''])[0]
-        longer = re.compile(r'[\W]+').sub('', lowercased)
-        return shorter, longer
+        lower = text.lower()
+        DOCTESTDEBUG('lower: %s', lower)
+        words = re.compile(r'[^\s\w]+', re.U).sub('', lower).split() or ['']
+        combined = re.compile(r'[\W]+', re.U).sub('', lower)
+        return words[0], combined
 
 def init():
     """ Main program """

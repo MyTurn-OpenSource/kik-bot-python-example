@@ -100,4 +100,10 @@ dependencies: $(VIRTUAL_ENV)/bin/python
 test: dependencies lint
 	nosetests --with-coverage
 
+pylint: $(VIRTUAL_ENV)/bin/python
+	pylint bot.py
+
+doctest: $(VIRTUAL_ENV)/bin/python
+	python -m doctest bot.py
+
 .PHONY: test lint dependencies dist dev_dependencies

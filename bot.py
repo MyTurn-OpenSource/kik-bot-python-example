@@ -21,7 +21,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 language governing permissions and limitations under the License.
 
 """
-from __future__ import print_statement
+from __future__ import print_function
 import sys
 import os
 import random
@@ -110,12 +110,20 @@ RESPONSE = {  # possible responses with new state for each state
                 'response': [["Sorry {you.first_name}, "
                               "I didn't quite understand that. How are you?"],
                              ["Sorry, I didn't quite understand that. "
-                              "How are you, {you.first_name}?"]]
+                              "How are you, {you.first_name}?"]],
                 'state': 'health_query',
                 'suggested': ['Good', 'Bad'],
             }
         ]
 }
+COMMAND = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+if COMMAND in ['doctest', 'pydoc']:
+    DOCTESTDEBUG = logging.debug
+else:
+    DOCTESTDEBUG = lambda *args, **kwargs: None
+# You can also use this `else` block to import things not needed during
+# doctest, especially slow-loading modules like `requests`,
+# or to do some other verbose or slow initialization.
 logging.debug('os.environ: %s, WEBHOOK: %s', os.environ, WEBHOOK)
 
 class KikBot(Flask):
@@ -166,9 +174,9 @@ class KikBot(Flask):
                         to=user,
                         chat_id=message.chat_id,
                         body='')
-            trimmed = self.trim(message.body)
             for check in RESPONSE[STATE[user]] + RESPONSE['default']:
-                if check['input'] == ANY or recognized(check['input'], trimmed):
+                if (check['input'] == ANY or
+                        self.recognized(message.body, check['input'])):
                     self.respond(response, check, message, userdata)
                     break
 
@@ -199,6 +207,22 @@ class KikBot(Flask):
                     body=text,
                     keyboards=keyboards))
         STATE[message.from_user] = data['state']
+
+    def recognized(self, user_input, expected):
+        '''
+        return True if first word or whole phrase matched
+
+        >>> app = init()
+        >>> app.recognized('I am', (['a', 'b', 'c'], ['i', 'iamnot']))
+        False
+        >>> app.recognized('I am', (['a', 'b', 'c'], ['iam', 'iamnot']))
+        True
+        >>> app.recognized('I am', (['a', 'i', 'c'], ['iwish', 'iamnot']))
+        True
+        '''
+        trimmed = self.trim(user_input)
+        DOCTESTDEBUG('checking if %s in %s', trimmed, expected)
+        return trimmed[0] in expected[0] or trimmed[1] in expected[1]
 
     @staticmethod
     def profile_pic_check_messages(user, message):
@@ -233,11 +257,16 @@ class KikBot(Flask):
 
         return tuple (first_word, entire_message_without_spaces)
         
-        >>> trim(None, "It's a boy!")
-        ('its', itsaboy')
+        >>> app = init()
+        >>> app.trim("It's a boy!")
+        ('its', 'itsaboy')
+        >>> app.trim('')
+        ('', '')
         '''
-        shorter = re.compile(r'[\S\W]+').sub('', text).split()[0]
-        longer = re.compile(r'[\W]+').sub('', text)
+        lowercased = text.lower()
+        shorter = (re.compile(r'[^\s\w]+').sub('', lowercased).split()
+                   or [''])[0]
+        longer = re.compile(r'[\W]+').sub('', lowercased)
         return shorter, longer
 
 def init():

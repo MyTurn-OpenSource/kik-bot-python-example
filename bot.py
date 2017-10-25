@@ -48,7 +48,7 @@ BAD = [
     ['notgood', 'nichtgut'],
 ]
 YES = [
-    ['yes', 'yep', 'yup', 'yeah', 'sure', 'ja', 'si', 'sí', 'great'] + OK,
+    ['yes', 'yep', 'yup', 'yeah', 'sure', 'ja', 'si', u'sí', 'great'] + OK,
     ['iguessso', 'comono', 'whynot'],
 ]
 NO = [

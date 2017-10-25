@@ -241,7 +241,7 @@ class KikBot(Flask):
         Package suggested replies as SuggestedResponseKeyboard object
         '''
         if not suggested:
-            keyboards = None
+            keyboards = []
         else:
             text_responses = [TextResponse(s) for s in suggested]
             keyboards = SuggestedResponseKeyboard(responses=text_responses)

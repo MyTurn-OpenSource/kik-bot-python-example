@@ -91,8 +91,8 @@ RESPONSE = {  # possible responses with new state for each state
     'picture_query': [
             {
                 'input': YES,
-                'response': [['PROFILE_PIC_DISPLAY',
-                              "Here's your profile picture!"]],
+                'response': [["Here's your profile picture!",
+                              'PROFILE_PIC_DISPLAY']],
                 'state': '',
                 'suggested': [],
             },
@@ -229,27 +229,19 @@ class KikBot(Flask):
         """Function to check if user has a profile picture and returns appropriate messages.
         :param user: Kik User Object (used to acquire the URL the profile picture)
         :param message: Kik message received by the bot
-        :return: Message
+        :return: PictureMessage
         """
         default_pic = 'https://cdn.kik.com/user/pic/%s/big' % message.from_user
-        messages_to_send = []
         profile_picture = user.profile_pic_url or default_pic
         logging.debug('profile_picture: %s', profile_picture)
 
-        messages_to_send.append(
-            # Another type of message is the PictureMessage - your bot can send a pic to the user!
-            PictureMessage(
-                to=message.from_user,
-                chat_id=message.chat_id,
-                pic_url=profile_picture
-            ))
+        return PictureMessage(
+            to=message.from_user,
+            chat_id=message.chat_id,
+            pic_url=profile_picture
+        )
 
-        profile_picture_response = "Here's your profile picture!"
-
-        messages_to_send.append(
-            TextMessage(to=message.from_user, chat_id=message.chat_id, body=profile_picture_response))
-
-        return messages_to_send
+    FUNCTIONS['PROFILE_PIC_DISPLAY'] = profile_pic_check_messages
 
     def trim(self, text):
         '''

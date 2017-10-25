@@ -244,7 +244,7 @@ class KikBot(Flask):
             keyboards = []
         else:
             text_responses = [TextResponse(s) for s in suggested]
-            keyboards = SuggestedResponseKeyboard(responses=text_responses)
+            keyboards = [SuggestedResponseKeyboard(responses=text_responses)]
         logging.debug('keyboards: %s', keyboards)
         return keyboards
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python -OO
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """An example Kik bot implemented in Python.
 
@@ -68,54 +68,54 @@ FUNCTIONS = {
 RESPONSE = {  # possible responses with new state for each state
     # note that kik app does not allow an empty response
     '': [
-            {
-                'input': GREETING,
-                'response': [['Hey {you.first_name}, how are you?']],
-                'state': 'health_query',
-                'suggested': ['Good', 'Bad'],
-            },
-        ],
+        {
+            'input': GREETING,
+            'response': [['Hey {you.first_name}, how are you?']],
+            'state': 'health_query',
+            'suggested': ['Good', 'Bad'],
+        },
+    ],
     'health_query': [
-            {
-                'input': GOOD,
-                'response': [["That's Great! :) Wanna see your profile pic?"]],
-                'state': 'picture_query',
-                'suggested': ["Sure! I'd love to!", 'No Thanks'],
-            },
-            {
-                'input': BAD,
-                'response': [['Oh No! :( Wanna see your profile pic?']],
-                'state': 'picture_query',
-                'suggested': ['Yep! I Sure Do!', 'No Thank You'],
-            },
-        ],
+        {
+            'input': GOOD,
+            'response': [["That's Great! :) Wanna see your profile pic?"]],
+            'state': 'picture_query',
+            'suggested': ["Sure! I'd love to!", 'No Thanks'],
+        },
+        {
+            'input': BAD,
+            'response': [['Oh No! :( Wanna see your profile pic?']],
+            'state': 'picture_query',
+            'suggested': ['Yep! I Sure Do!', 'No Thank You'],
+        },
+    ],
     'picture_query': [
-            {
-                'input': YES,
-                'response': [["Here's your profile picture!",
-                              'PROFILE_PIC_DISPLAY']],
-                'state': '',
-                'suggested': [],
-            },
-            {
-                'input': NO,
-                'response': [['Ok, {you.first_name}. '
-                             'Chat with me again if you change your mind.']],
-                'state': '',
-                'suggested': [],
-            },
-        ],
+        {
+            'input': YES,
+            'response': [["Here's your profile picture!",
+                          'PROFILE_PIC_DISPLAY']],
+            'state': '',
+            'suggested': [],
+        },
+        {
+            'input': NO,
+            'response': [['Ok, {you.first_name}. '
+                          'Chat with me again if you change your mind.']],
+            'state': '',
+            'suggested': [],
+        },
+    ],
     'default': [
-            {
-                'input': ANY,
-                'response': [["Sorry {you.first_name}, "
-                              "I didn't quite understand that. How are you?"],
-                             ["Sorry, I didn't quite understand that. "
-                              "How are you, {you.first_name}?"]],
-                'state': 'health_query',
-                'suggested': ['Good', 'Bad'],
-            }
-        ]
+        {
+            'input': ANY,
+            'response': [["Sorry {you.first_name}, "
+                          "I didn't quite understand that. How are you?"],
+                         ["Sorry, I didn't quite understand that. "
+                          "How are you, {you.first_name}?"]],
+            'state': 'health_query',
+            'suggested': ['Good', 'Bad'],
+        }
+    ]
 }
 COMMAND = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 if COMMAND in ['doctest', 'pydoc']:
@@ -167,20 +167,30 @@ class KikBot(Flask):
         >>> got = test.process([TextMessage(body='Hey there!')], testing=True)
         >>> 'how are you' in got[0].body.lower()
         True
+        >>> STATE['tester'] = 'health_query'
+        >>> got = test.process([TextMessage(body='Fine, thanks')], testing=True)
+        >>> got[0].body
+        "That's Great! :) Wanna see your profile pic?"
+        >>> STATE['tester'] = 'picture_query'
+        >>> got = test.process([TextMessage(body='Okay')], testing=True)
+        >>> isinstance(got[0], TextMessage)
+        True
+        >>> isinstance(got[1], PictureMessage)
+        True
         '''
         response = []
         for message in messages:
-            user = message.from_user
-            logging.debug('user: %s', user)
+            username = message.from_user
+            logging.debug('username: %s', username)
             if testing:
-                userdata = type('', (), {
-                    'profile_pic_url': '//t.co/gnixl',
-                    'first_name': 'gnixl',
+                user = type('TestUser', (), {
+                    'profile_pic_url': '//t.co/tester',
+                    'first_name': 'tester',
                 })
             else:
-                userdata = self.kik_api.get_user(message.from_user)
-            logging.debug('userdata: %s', userdata)
-            state = STATE[user]
+                user = self.kik_api.get_user(message.from_user)
+            logging.debug('user: %s', getattr(user, 'to_json', user))
+            state = STATE[username]
             # Check if its the user's first message.
             # Start Chatting messages are sent only once.
             # Treat it as "hello" regardless of content.
@@ -195,27 +205,27 @@ class KikBot(Flask):
                         to=BOT_USERNAME,
                         chat_id=message.chat_id,
                         body='')
-            for check in RESPONSE[STATE[user]] + RESPONSE['default']:
+            for check in RESPONSE[STATE[username]] + RESPONSE['default']:
                 if (check['input'] == ANY or
                         self.recognized(message.body, check['input'])):
-                    state = self.respond(response, check, message, userdata)
-                    STATE[user] = state
+                    state = self.respond(response, check, message, user)
+                    STATE[username] = state
                     break
         return response
 
-    def respond(self, response, data, message, userdata):
+    def respond(self, response, data, message, user):
         '''
         Append packaged random response from data provided to response
         
-        Returns new state for user
+        Returns new state for username
         '''
         templates = random.choice(data['response'])
         for template in templates:
             if template in FUNCTIONS:
                 response.append(getattr(self, FUNCTIONS[template])(
-                    userdata, message))
+                    user, message))
             else:
-                text = template.format(you=userdata)
+                text = template.format(you=user)
                 keyboards = [SuggestedResponseKeyboard(
                     responses=map(TextResponse, data['suggested']))]
                 response.append(TextMessage(
@@ -241,14 +251,14 @@ class KikBot(Flask):
         DOCTESTDEBUG('checking if %s in %s', trimmed, expected)
         return trimmed[0] in expected[0] or trimmed[1] in expected[1]
 
-    def profile_pic_check_messages(self, userdata, message):
+    def profile_picture_message(self, user, message):
         """Function to check if user has a profile picture and returns appropriate messages.
         :param user: Kik User Object (used to acquire the URL the profile picture)
         :param message: Kik message received by the bot
         :return: PictureMessage
         """
         default_pic = 'https://cdn.kik.com/user/pic/%s/big' % message.from_user
-        profile_picture = userdata.profile_pic_url or default_pic
+        profile_picture = user.profile_pic_url or default_pic
         logging.debug('profile_picture: %s', profile_picture)
 
         return PictureMessage(
@@ -257,7 +267,7 @@ class KikBot(Flask):
             pic_url=profile_picture
         )
 
-    FUNCTIONS['PROFILE_PIC_DISPLAY'] = 'profile_pic_check_messages'
+    FUNCTIONS['PROFILE_PIC_DISPLAY'] = 'profile_picture_message'
 
     def trim(self, text):
         '''

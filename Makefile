@@ -106,4 +106,8 @@ pylint: $(VIRTUAL_ENV)/bin/python
 doctest: $(VIRTUAL_ENV)/bin/python
 	python -m doctest bot.py
 
+logs:
+	sudo tail -f /var/log/nginx/access.log \
+	 /var/log/nginx/error.log \
+	 /var/log/uwsgi/app/kikbot.log
 .PHONY: test lint dependencies dist dev_dependencies
